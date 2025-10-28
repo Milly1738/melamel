@@ -1,0 +1,5 @@
+{
+  "name": "Algorithm Visualizer",
+  "description": "An interactive platform to visualize various computer science algorithms, including sorting, searching, graph, and greedy algorithms.",
+  "requestFramePermissions": []
+}
