@@ -149,14 +149,137 @@ function* selectionSort(arr: number[]): Generator<ArrayStep> {
 
 function* mergeSort(arr: number[]): Generator<ArrayStep> {
     const array = [...arr];
-    // This is complex to visualize iteratively with generators.
-    yield { array, highlights: {}, message: 'Merge Sort is not implemented yet.' };
+    const n = array.length;
+
+    function* merge(l: number, m: number, r: number): Generator<ArrayStep> {
+        const n1 = m - l + 1;
+        const n2 = r - m;
+
+        const L = new Array(n1);
+        const R = new Array(n2);
+
+        for (let i = 0; i < n1; i++) L[i] = array[l + i];
+        for (let j = 0; j < n2; j++) R[j] = array[m + 1 + j];
+        
+        const highlights = {};
+        for(let i=l; i<=r; i++) highlights[i] = COLORS.compare;
+        yield { array: [...array], highlights, message: `Merging subarrays from index ${l} to ${r}.` };
+
+        let i = 0, j = 0, k = l;
+        while (i < n1 && j < n2) {
+            yield { array: [...array], highlights: { ...highlights, [l + i]: COLORS.probe, [m + 1 + j]: COLORS.probe }, message: `Comparing ${L[i]} and ${R[j]}.` };
+            if (L[i] <= R[j]) {
+                array[k] = L[i];
+                i++;
+            } else {
+                array[k] = R[j];
+                j++;
+            }
+            yield { array: [...array], highlights: {...highlights, [k]: COLORS.swap}, message: `Placing ${array[k]} in correct position.` };
+            k++;
+        }
+
+        while (i < n1) {
+            array[k] = L[i];
+            yield { array: [...array], highlights: {...highlights, [k]: COLORS.swap}, message: `Placing remaining element ${array[k]}.` };
+            i++;
+            k++;
+        }
+
+        while (j < n2) {
+            array[k] = R[j];
+            yield { array: [...array], highlights: {...highlights, [k]: COLORS.swap}, message: `Placing remaining element ${array[k]}.` };
+            j++;
+            k++;
+        }
+        
+        const sortedHighlights = {};
+        for (let i=l; i<=r; i++) sortedHighlights[i] = COLORS.sorted;
+        yield { array: [...array], highlights: sortedHighlights, message: `Subarray from ${l} to ${r} is now sorted.` };
+    }
+
+    function* mergeSortRecursive(l: number, r: number): Generator<ArrayStep> {
+        if (l < r) {
+            const m = l + Math.floor((r - l) / 2);
+            yield* mergeSortRecursive(l, m);
+            yield* mergeSortRecursive(m + 1, r);
+            yield* merge(l, m, r);
+        } else {
+            yield { array: [...array], highlights: {[l]: COLORS.sorted}, message: `Base case: subarray of size 1 at index ${l} is sorted.`};
+        }
+    }
+    
+    yield* mergeSortRecursive(0, n - 1);
+    
+    const finalHighlights = {};
+    for (let i = 0; i < n; i++) finalHighlights[i] = COLORS.sorted;
+    yield { array: [...array], highlights: finalHighlights, message: 'Array is sorted!' };
 }
 
 function* quickSort(arr: number[]): Generator<ArrayStep> {
     const array = [...arr];
-     // This is complex to visualize iteratively with generators.
-    yield { array, highlights: {}, message: 'Quick Sort is not implemented yet.' };
+    const n = array.length;
+    const sortedIndices = new Set<number>();
+
+    function getHighlights() {
+        const highlights = {};
+        sortedIndices.forEach(idx => highlights[idx] = COLORS.sorted);
+        return highlights;
+    }
+
+    function* partition(low: number, high: number): Generator<ArrayStep, number> {
+        const pivot = array[high];
+        let i = low - 1;
+
+        const baseHighlights = getHighlights();
+        for (let k = low; k <= high; k++) {
+            if (!sortedIndices.has(k)) baseHighlights[k] = COLORS.compare;
+        }
+        baseHighlights[high] = COLORS.pivot;
+        yield { array: [...array], highlights: baseHighlights, message: `Partitioning. Pivot is ${pivot}.` };
+
+        for (let j = low; j < high; j++) {
+            const currentHighlights = {...baseHighlights};
+            currentHighlights[j] = COLORS.probe;
+            if(i >= low) currentHighlights[i] = COLORS.pivot; // 'i' is boundary
+            yield { array: [...array], highlights: currentHighlights, message: `Comparing ${array[j]} with pivot ${pivot}.` };
+            
+            if (array[j] < pivot) {
+                i++;
+                const swapHighlights = {...baseHighlights};
+                swapHighlights[i] = COLORS.swap;
+                swapHighlights[j] = COLORS.swap;
+                yield { array: [...array], highlights: swapHighlights, message: `Swapping ${array[i]} and ${array[j]}.` };
+                [array[i], array[j]] = [array[j], array[i]];
+            }
+        }
+        
+        const swapHighlights = {...baseHighlights};
+        swapHighlights[i+1] = COLORS.swap;
+        swapHighlights[high] = COLORS.swap;
+        yield { array: [...array], highlights: swapHighlights, message: `Moving pivot ${pivot} to its sorted position.` };
+        [array[i + 1], array[high]] = [array[high], array[i + 1]];
+        return i + 1;
+    }
+
+    function* quickSortRecursive(low: number, high: number): Generator<ArrayStep> {
+        if (low < high) {
+            const pi: number = yield* partition(low, high);
+            sortedIndices.add(pi);
+
+            yield { array: [...array], highlights: getHighlights(), message: `Element ${array[pi]} is sorted.` };
+
+            yield* quickSortRecursive(low, pi - 1);
+            yield* quickSortRecursive(pi + 1, high);
+        } else if (low >= 0 && low < n && low === high) { // handle single-element subarrays
+             sortedIndices.add(low);
+             yield { array: [...array], highlights: getHighlights(), message: `Element ${array[low]} is sorted.` };
+        }
+    }
+
+    yield* quickSortRecursive(0, n - 1);
+
+    yield { array: [...array], highlights: getHighlights(), message: 'Array is sorted!' };
 }
 
 
